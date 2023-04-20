@@ -1,0 +1,63 @@
+parameters:
+  - name: path
+    displayName: Path for the downloaded artefact
+    type: string
+
+steps:
+  - task: AzureResourceManagerTemplateDeployment@3
+    inputs:
+      # deploymentScope: "Resource Group" # 'Management Group' | 'Subscription' | 'Resource Group'. Required. Deployment scope. Default: Resource Group.
+      azureResourceManagerConnection: "$(ArmConnection)"
+      subscriptionId: "$(SubscriptionId)"
+      # action: "Create Or Update Resource Group" # 'Create Or Update Resource Group' | 'DeleteRG'. Required when deploymentScope = Resource Group. Action. Default: Create Or Update Resource Group.
+      resourceGroupName: "MasterClass$(envName)"
+      location: "Australia East"
+      # templateLocation: "Linked artifact" # 'Linked artifact' | 'URL of the file'. Required. Template location. Default: Linked artifact.
+      csmFile: "${{parameters.path}}/bicep/main.bicep"
+      csmParametersFile: "${{parameters.path}}/bicep/main.parameters.json"
+      overrideParameters: "-sqlServerAdministratorLogin $(sqlServerAdministratorLogin) -sqlServerAdministratorLoginPassword $(sqlServerAdministratorLoginPassword) -environmentType $(envName) -azureAdTenantId $(azureAdTenantId) -azureAdInstance $(AzureAd.Instance) -clientIdForAzureAd $(clientIdForAzureAd)"
+      # deploymentMode: "Incremental"
+      deploymentOutputs: "outputStorageVar"
+
+  - task: PowerShell@2
+    inputs:
+      targetType: "inline"
+      script: |
+        $obj = ConvertFrom-Json '$(outputStorageVar)'
+        Write-Host "##vso[task.setvariable variable=appServiceAppName]$($obj.appServiceAppName.value)"
+        Write-Host "##vso[task.setvariable variable=appServiceAppHostName]$($obj.appServiceAppHostName.value)"
+        Write-Host "##vso[task.setvariable variable=sqlServerName]$($obj.sqlServerName.value)"
+        Write-Host "##vso[task.setvariable variable=functionAppName]$($obj.functionAppName.value)"
+
+  - template: ./replace-tokens.yml
+    parameters:
+      zipPath: "${{parameters.path}}/Output/$(webApiName).zip"
+
+  - task: FileTransform@1
+    inputs:
+      folderPath: "${{parameters.path}}/Output/$(webApiName).zip"
+      fileType: "json"
+      targetFiles: "appsettings.json"
+
+  - task: AzureWebApp@1
+    inputs:
+      azureSubscription: "$(ArmConnection)"
+      appType: "webAppLinux"
+      appName: "$(appServiceAppName)"
+      package: "${{parameters.path}}/Output/$(webApiName).zip"
+
+  - task: FileTransform@1
+    inputs:
+      folderPath: "${{parameters.path}}/Output/$(funcAppName).zip"
+      fileType: "json"
+      targetFiles: "appsettings.json"
+
+  - task: AzureFunctionApp@1
+    displayName: "Azure Function Deploy"
+    inputs:
+      azureSubscription: "$(ArmConnection)"
+      appType: functionAppLinux
+      appName: "$(functionAppName)"
+      package: "${{parameters.path}}/Output/$(funcAppName).zip"
+      startUpCommand: "func azure functionapp publish $(functionAppName) --no-bundler"
+      runtimeStack: DOTNET|6.0

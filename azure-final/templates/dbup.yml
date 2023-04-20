@@ -1,0 +1,17 @@
+steps:
+  - task: UseDotNet@2
+    inputs:
+      packageType: "sdk"
+      version: $(dotnetSdkVersion)
+
+  - task: FileTransform@1
+    inputs:
+      folderPath: $(dbUpFolder)
+      fileType: "json"
+      targetFiles: "appsettings.json"
+
+  - task: DotNetCoreCLI@2
+    displayName: "Run database migrations"
+    inputs:
+      command: "run"
+      projects: $(dbUpFolder)

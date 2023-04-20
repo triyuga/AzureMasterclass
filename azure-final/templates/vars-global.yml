@@ -1,0 +1,36 @@
+variables:
+  - name: srcRoot
+    value: "./src" # substitute with "./src-stage1" etc
+
+  - name: dotnetSdkVersion
+    value: "6.0.x"
+
+  - name: buildConfiguration
+    value: Release
+
+  - name: webUiName
+    value: azure-masterclass
+  - name: webUiFolder
+    value: "$(srcRoot)/clients/$(webUiName)"
+
+  - name: webApiName
+    value: "AzureMasterclass.Api"
+  - name: webApiFolder
+    value: "$(srcRoot)/$(webApiName)"
+
+  - name: testProjectName
+    value: "AzureMasterclass.Tests"
+  - name: testProjectFolder
+    value: "$(srcRoot)/$(testProjectName)"
+
+  - name: funcAppName
+    value: "AzureMasterclass.Function"
+  - name: funcAppFolder
+    value: "$(srcRoot)/$(funcAppName)"
+
+  - name: dbUpName
+    value: "AzureMasterclass.DbUp"
+  - name: dbUpFolder
+    value: "$(srcRoot)/$(dbUpName)"
+
+  

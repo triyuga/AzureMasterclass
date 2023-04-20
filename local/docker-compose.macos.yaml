@@ -1,0 +1,23 @@
+version: "3.3"
+
+services:
+  db:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    restart: always
+    container_name: AzureMasterClass_db
+    ports:
+      - 14331:1433
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_PID=Developer
+      - MSSQL_SA_PASSWORD=Pa55w0rd!
+
+  blob:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: "azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --queuePort 10001 --tableHost 0.0.0.0 --tablePort 10002 --loose --skipApiVersionCheck"    
+    restart: always
+    container_name: AzureMasterClass_blob
+    ports:
+      - 10000:10000
+      - 10001:10001
+      - 10002:10002

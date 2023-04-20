@@ -1,0 +1,36 @@
+parameters:
+  - name: zipPath
+    displayName: path for the web api zip file which contains the SPA
+    type: string
+
+steps:
+  - task: ExtractFiles@1
+    inputs:
+      archiveFilePatterns: ${{parameters.zipPath}}
+      destinationFolder: "$(Pipeline.Workspace)/application"
+      cleanDestinationFolder: true
+      overwriteExistingFiles: false
+
+  - task: qetza.replacetokens.replacetokens-task.replacetokens@3
+    displayName: "Replace tokens"
+    name: REPLACE
+    inputs:
+      rootDirectory: "$(Pipeline.Workspace)/application/wwwroot"
+      targetFiles: |
+        **/*.config
+        **/*.json
+        **/*.js
+      emptyValue: "unset"
+
+  # - task: DeleteFiles@1
+  #   inputs:
+  #     SourceFolder: ${{parameters.zipPath}}
+  #     Contents: '*.zip'
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Pipeline.Workspace)/application" # string. Required. Root folder or file to archive. Default: $(Build.BinariesDirectory).
+      includeRootFolder: false # boolean. Required. Prepend root folder name to archive paths. Default: true.
+      archiveType: "zip"
+      archiveFile: ${{parameters.zipPath}} # string. Required. Archive file to create. Default: $(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip.
+      # replaceExistingArchive: true # boolean. Required. Replace existing archive. Default: true.

@@ -1,0 +1,116 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+# Key
+# https://learn.microsoft.com/en-us/azure/devops/pipelines/get-started/key-pipelines-concepts?view=azure-devops
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+  paths:
+    include:
+      - "*"
+    exclude:
+      - "scripts"
+      - "workshop"
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - template: templates/vars-global.yml # Go to this file to configure which src-stage to build by changing 'srcRoot'
+
+stages:
+  - stage: build_and_publish
+    displayName: build and publish
+    jobs:
+      - job: BuildAndPublish
+        displayName: "Build and Publish"
+        steps:
+          - task: Npm@1
+            displayName: "Npm install"
+            inputs:
+              command: "install"
+              workingDir: $(webUiFolder)
+
+          - task: Npm@1
+            displayName: "Npm Run Build"
+            inputs:
+              command: "custom"
+              workingDir: $(webUiFolder)
+              customCommand: "run build"
+
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: "$(webUiFolder)/build"
+              Contents: "**"
+              TargetFolder: "$(webApiFolder)/wwwroot"
+              CleanTargetFolder: true
+              OverWrite: true
+
+          - task: UseDotNet@2
+            inputs:
+              version: "$(dotnetSdkVersion)"
+              packageType: runtime
+
+          - task: DotNetCoreCLI@2
+            displayName: "Run Tests"
+            inputs:
+              command: test
+              projects: "$(testProjectFolder)/$(testProjectName).csproj"
+              arguments: "--configuration $(buildConfiguration)"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Publish the web app"
+            inputs:
+              command: "publish"
+              publishWebProjects: false # Disable default `publishWebProjects`; specify `projects` explicitly, below
+              projects: "$(webApiFolder)/$(webApiName).csproj"
+              arguments: "--configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/Output"
+              workingDirectory: $(webApiFolder)
+
+
+          - task: DotNetCoreCLI@2
+            displayName: "Publish the function app"
+            inputs:
+              command: "publish"
+              projects: "$(funcAppFolder)/$(funcAppName).csproj"
+              publishWebProjects: false
+              arguments: "--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/Output"
+              zipAfterPublish: true
+
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: "azure/bicep"
+              Contents: "**"
+              TargetFolder: "$(Build.ArtifactStagingDirectory)/bicep"
+
+          - task: PublishBuildArtifacts@1
+            # inputs:
+            # PathtoPublish: "$(Build.ArtifactStagingDirectory)" # string. Required. Path to publish. Default: $(Build.ArtifactStagingDirectory).
+            # ArtifactName: 'drop' # string. Required. Artifact name. Default: drop.
+            # publishLocation: 'Container' # 'Container' | 'FilePath'. Alias: ArtifactType. Required. Artifact publish location. Default: Container.
+
+  - stage: deploy_to_dev
+    displayName: deploy to dev
+    variables:
+      - group: "Dev"
+    jobs:
+      - job: Deploy
+        displayName: "Deploy"
+        steps:
+          - download: current
+            artifact: drop
+
+          - template: templates/deploy.yml
+            parameters:
+              path: $(Pipeline.Workspace)/drop
+
+      - job: DbUp
+        dependsOn: Deploy
+        steps:
+          - template: templates/dbup.yml

@@ -1,0 +1,74 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: none
+# trigger: master
+  
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - name: dotnetSdkVersion
+    value: "6.0.x"
+  - name: buildConfiguration
+    value: Release
+  - name: webUiFolder
+    value: "src/clients/azure-masterclass"
+  - name: webApiFolder
+    value: "src/AzureMasterclass.Api"
+  - name: testsProject
+    value: "src/AzureMasterclass.Tests/AzureMasterclass.Tests.csproj"
+
+stages:
+  - stage: build_and_publish
+    displayName: build and publish
+    jobs:
+      - job: BuildAndPublishWeb
+        displayName: "Build and Publish Web App"
+        steps:
+          - task: Npm@1
+            displayName: "Npm install"
+            inputs:
+              command: "install"
+              workingDir: $(webUiFolder)
+
+          - task: Npm@1
+            displayName: "Npm Run Build"
+            inputs:
+              command: "custom"
+              workingDir: $(webUiFolder)
+              customCommand: "run build"
+
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: "$(webUiFolder)/build"
+              Contents: "**"
+              TargetFolder: "$(webApiFolder)/wwwroot"
+              CleanTargetFolder: true
+              OverWrite: true
+
+          # Do we need this?
+          - task: UseDotNet@2
+            inputs:
+              version: "$(dotnetSdkVersion)"
+              packageType: runtime
+          
+          - task: DotNetCoreCLI@2
+            displayName: "Run Tests"
+            inputs:
+              command: test
+              projects: "$(testsProject)"
+              arguments: "--configuration $(buildConfiguration)"
+
+          - task: DotNetCoreCLI@2
+            displayName: "Publish the web app"
+            inputs:
+              command: "publish"
+              publishWebProjects: true
+              arguments: "--configuration $(buildConfiguration) -o $(Build.ArtifactStagingDirectory)/Output"
+              workingDirectory: $(webApiFolder)
+
+          - task: PublishBuildArtifacts@1

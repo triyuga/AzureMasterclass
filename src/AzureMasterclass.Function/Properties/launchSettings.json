@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "AzureMasterclass.Function": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 17080",
+      "launchBrowser": false
+    }
+  }
+}

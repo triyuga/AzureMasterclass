@@ -1,0 +1,38 @@
+$azureBlue: #0188d4;
+
+.root {
+    .header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        padding: 20px 30px;
+        background-color: $azureBlue;
+        .brand {
+            color: white;
+            font-size: 24px;
+            text-decoration: none;
+        }
+        .navigation {
+            ul {
+                margin: 0;
+                padding: 0;
+                display: flex;
+
+                li {
+                    padding: 0.5rem 1rem;
+                    display: block;
+
+                    a {
+                        color: white;
+                    }
+                }
+            }
+        }
+        .userNav {
+            a {
+                color: white;
+                padding: 0.5rem 1rem;
+            }
+        }
+    }
+}
